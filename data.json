@@ -1,0 +1,253 @@
+{
+  "groupName": "ФЕІ-22с",
+  "subgroup": "підгр. 2",
+  "days": [
+    {
+      "dayOfWeek": "Понеділок",
+      "lessons": [
+        {
+          "pairNumber": 1,
+          "time": "08:30-09:50",
+          "subgroup": "підгр. 2",
+          "subject": "Операційні системи",
+          "lessonType": "лабораторна",
+          "teacher": {
+            "fullName": "Бойко Я. В.",
+            "academicRank": "доцент"
+          },
+          "room": "N10/Б",
+          "isRemote": false,
+          "weekParity": null
+        },
+        {
+          "pairNumber": 2,
+          "time": "10:10-11:30",
+          "subgroup": "підгр. 2",
+          "subject": "Оптоелектронна інформатика",
+          "lessonType": "лабораторна",
+          "teacher": {
+            "fullName": "Горон Б. І.",
+            "academicRank": "доцент"
+          },
+          "room": "218/Т",
+          "isRemote": false,
+          "weekParity": null
+        },
+        {
+          "pairNumber": 3,
+          "time": "11:50-13:10",
+          "subgroup": "Зб.група (з ФЕІ-21с)",
+          "subject": "Іноземна мова",
+          "lessonType": "практичне",
+          "teacher": {
+            "fullName": "Шандра Н. А.",
+            "academicRank": "доцент"
+          },
+          "room": "406/Т",
+          "isRemote": false,
+          "weekParity": null
+        },
+        {
+          "pairNumber": 4,
+          "time": "13:30-14:50",
+          "subgroup": "Потік (весь курс)",
+          "subject": "Оптоелектронна інформатика",
+          "lessonType": "лекція",
+          "teacher": {
+            "fullName": "Корчак Ю. М.",
+            "academicRank": "доцент"
+          },
+          "room": "1/Б",
+          "isRemote": false,
+          "weekParity": null
+        }
+      ]
+    },
+    {
+      "dayOfWeek": "Вівторок",
+      "lessons": [
+        {
+          "pairNumber": 1,
+          "time": "08:30-09:50",
+          "subgroup": "Потік (ФЕІ групи)",
+          "subject": "Основи національного спротиву",
+          "lessonType": "лекція",
+          "teacher": null,
+          "room": "1/Б",
+          "isRemote": false,
+          "weekParity": null
+        },
+        {
+          "pairNumber": 2,
+          "time": "10:10-11:30",
+          "subgroup": "Зб.група (з ФЕІ-21с, ФЕІ-23с)",
+          "subject": "Іноземна мова",
+          "lessonType": "практичне",
+          "teacher": {
+            "fullName": "Шандра Н. А.",
+            "academicRank": "доцент"
+          },
+          "room": "406/Т",
+          "isRemote": false,
+          "weekParity": "чисельник"
+        }
+      ]
+    },
+    {
+      "dayOfWeek": "Середа",
+      "lessons": [
+        {
+          "pairNumber": 1,
+          "time": "08:30-09:50",
+          "subgroup": "Зб.група",
+          "subject": "Веб програмування на стороні сервера",
+          "lessonType": "лабораторна",
+          "teacher": {
+            "fullName": "Гусак О. В.",
+            "academicRank": "асистент"
+          },
+          "room": "№5/Б",
+          "isRemote": false,
+          "weekParity": null
+        },
+        {
+          "pairNumber": 2,
+          "time": "10:10-11:30",
+          "subgroup": "підгр. 2",
+          "subject": "Організація баз даних та знань",
+          "lessonType": "лабораторна",
+          "teacher": {
+            "fullName": "Галяткін О. О.",
+            "academicRank": "асистент"
+          },
+          "room": "№5/Б",
+          "isRemote": false,
+          "weekParity": null
+        }
+      ]
+    },
+    {
+      "dayOfWeek": "Четвер",
+      "lessons": [
+        {
+          "pairNumber": 1,
+          "time": "08:30-09:50",
+          "subgroup": "Потік (весь курс)",
+          "subject": "Українська мова (за професійним спрямуванням)",
+          "lessonType": "лекція",
+          "teacher": {
+            "fullName": "Щепанська Х. А.",
+            "academicRank": "доцент"
+          },
+          "room": "1/Б",
+          "isRemote": false,
+          "weekParity": "чисельник",
+          "note": "чергується з практичним заняттям нижче (яке на знаменнику)"
+        },
+        {
+          "pairNumber": 1,
+          "time": "08:30-09:50",
+          "subgroup": null,
+          "subject": "Українська мова (за професійним спрямуванням)",
+          "lessonType": "практичне",
+          "teacher": {
+            "fullName": "Слободзяник О. З.",
+            "academicRank": "доцент"
+          },
+          "room": "3/Б",
+          "isRemote": false,
+          "weekParity": "знаменник",
+          "note": "чергується з лекцією вище (яка на чисельнику)"
+        },
+        {
+          "pairNumber": 2,
+          "time": "10:10-11:30",
+          "subgroup": "Потік",
+          "subject": "Веб програмування на стороні сервера",
+          "lessonType": "лекція",
+          "teacher": {
+            "fullName": "Чмихало О. С.",
+            "academicRank": "асистент"
+          },
+          "room": "1/Б",
+          "isRemote": false,
+          "weekParity": null
+        },
+        {
+          "pairNumber": 3,
+          "time": "12:30",
+          "subgroup": "Потік",
+          "subject": "Основи національного спротиву",
+          "lessonType": "практичне",
+          "teacher": null,
+          "room": "Спортивний комплекс ЛНУ, вул. Черемшини, 31",
+          "isRemote": false,
+          "weekParity": null
+        }
+      ]
+    },
+    {
+      "dayOfWeek": "П'ятниця",
+      "lessons": [
+        {
+          "pairNumber": 1,
+          "time": "08:30-09:50",
+          "subgroup": "Потік",
+          "subject": "Організація баз даних та знань",
+          "lessonType": "лекція",
+          "teacher": {
+            "fullName": "Гусак О. В.",
+            "academicRank": "асистент"
+          },
+          "room": "1/Б",
+          "isRemote": false,
+          "weekParity": null
+        },
+        {
+          "pairNumber": 2,
+          "time": "10:10-11:30",
+          "subgroup": "Потік",
+          "subject": "Операційні системи",
+          "lessonType": "лекція",
+          "teacher": {
+            "fullName": "Бойко Я. В.",
+            "academicRank": "доцент"
+          },
+          "room": "1/Б",
+          "isRemote": false,
+          "weekParity": null
+        },
+        {
+          "pairNumber": 3,
+          "time": "11:50-13:10",
+          "subgroup": null,
+          "subject": "Говори, щоб тебе слухали: ефективна риторика",
+          "department": "Міжкультурної комунікації та перекладу",
+          "lessonType": "лекція",
+          "teacher": {
+            "fullName": "Паламар Н. І."
+          },
+          "room": "вул. Медової Печери, 53",
+          "isRemote": false,
+          "weekParity": "чисельник",
+          "note": "чергується з практичним заняттям нижче (яке на знаменнику)"
+        },
+        {
+          "pairNumber": 3,
+          "time": "11:50-13:10",
+          "subgroup": null,
+          "subject": "Говори, щоб тебе слухали: ефективна риторика",
+          "department": "Міжкультурної комунікації та перекладу",
+          "lessonType": "практичне",
+          "teacher": {
+            "fullName": "Паламар Н. І."
+          },
+          "room": "вул. Медової Печери, 53",
+          "isRemote": false,
+          "weekParity": "знаменник",
+          "note": "чергується з лекцією вище (яка на чисельнику)"
+        }
+      ]
+    }
+  ]
+}
