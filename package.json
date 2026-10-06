@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/werre79/lab3web/issues"
   },
-  "homepage": "https://github.com/werre79/lab3web#readme"
+  "homepage": "https://github.com/werre79/lab3web#readme",
+  "dependencies": {
+    "commander": "^15.0.0"
+  }
 }
