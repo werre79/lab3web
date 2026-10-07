@@ -75,7 +75,7 @@
           "teacher": null,
           "room": "1/Б",
           "isRemote": false,
-          "weekParity": null
+          "weekParity": "чисельник"
         },
         {
           "pairNumber": 2,
@@ -182,7 +182,7 @@
           "teacher": null,
           "room": "Спортивний комплекс ЛНУ, вул. Черемшини, 31",
           "isRemote": false,
-          "weekParity": null
+          "weekParity": "чисельник"
         }
       ]
     },
@@ -230,7 +230,7 @@
           "room": "вул. Медової Печери, 53",
           "isRemote": false,
           "weekParity": "чисельник",
-          "note": "чергується з практичним заняттям нижче (яке на знаменнику)"
+          "note": "Лекція"
         },
         {
           "pairNumber": 3,
@@ -245,7 +245,7 @@
           "room": "вул. Медової Печери, 53",
           "isRemote": false,
           "weekParity": "знаменник",
-          "note": "чергується з лекцією вище (яка на чисельнику)"
+          "note": "Практичне"
         }
       ]
     }
