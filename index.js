@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { Command, Argument, Option } from "commander";
-import { readFileSync, existsSync } from "node:fs";
+import { Command, Argument, Help } from "commander";
+import { readFileSync } from "node:fs";
 
 // ---------- Допоміжні функції ----------
 
@@ -10,29 +10,54 @@ function fail(message) {
   process.exit(1);
 }
 
-/** Зчитує та парсить JSON-файл розкладу, обробляючи типові помилки. */
+/**
+ * Зчитує та парсить JSON-файл розкладу. Усі типові проблеми (немає файлу,
+ * некоректний JSON, неочікувана структура) завершуються зрозумілою
+ * помилкою українською, а не стеком викликів.
+ */
 function loadData(filePath) {
-  if (!existsSync(filePath)) {
-    fail(`файл "${filePath}" не знайдено.`);
-  }
   let raw;
   try {
     raw = readFileSync(filePath, "utf-8");
   } catch (err) {
+    if (err.code === "ENOENT") fail(`файл "${filePath}" не знайдено.`);
     fail(`не вдалося прочитати файл "${filePath}" (${err.message}).`);
   }
+
+  let data;
   try {
-    return JSON.parse(raw);
+    data = JSON.parse(raw);
   } catch (err) {
     fail(`файл "${filePath}" містить некоректний JSON (${err.message}).`);
   }
+
+  // JSON може бути синтаксично правильним, але не бути розкладом (null, [], число...)
+  const looksLikeSchedule =
+    data !== null &&
+    typeof data === "object" &&
+    Array.isArray(data.days) &&
+    data.days.every(
+      (d) =>
+        d !== null &&
+        typeof d === "object" &&
+        typeof d.dayOfWeek === "string" &&
+        Array.isArray(d.lessons) &&
+        d.lessons.every((l) => l !== null && typeof l === "object")
+    );
+  if (!looksLikeSchedule) {
+    fail(
+      `файл "${filePath}" має неочікувану структуру: потрібен об'єкт із масивом "days", ` +
+        `де кожен день має рядок "dayOfWeek" і масив "lessons" з об'єктів-занять.`
+    );
+  }
+  return data;
 }
 
 /** Повертає масив { dayOfWeek, lesson } для всіх занять документа (обхід вкладених масивів). */
 function flattenLessons(data) {
   const result = [];
-  for (const day of data.days ?? []) {
-    for (const lesson of day.lessons ?? []) {
+  for (const day of data.days) {
+    for (const lesson of day.lessons) {
       result.push({ dayOfWeek: day.dayOfWeek, lesson });
     }
   }
@@ -71,29 +96,57 @@ function lessonFullText({ dayOfWeek, lesson }) {
   return lines.join("\n");
 }
 
+/** Нормалізує текст для порівняння: нижній регістр, єдиний вигляд апострофа. */
+function normalize(text) {
+  return text.toLowerCase().replace(/[\u2019\u02bc`]/g, "'");
+}
+
+/** Знаходить день за назвою (без урахування регістру й виду апострофа). */
+function findDay(data, dayName) {
+  const day = data.days.find((d) => normalize(d.dayOfWeek) === normalize(dayName));
+  if (!day) {
+    const available = data.days.map((d) => d.dayOfWeek).join(", ");
+    fail(`день "${dayName}" не знайдено в розкладі. Доступні дні: ${available}.`);
+  }
+  return day;
+}
+
 /**
  * Знаходить заняття за днем тижня й номером пари. Якщо на цю пару припадає
  * кілька занять (чергування за weekParity), а parity не вказано — повертає
- * усі знайдені записи, щоб викликач міг або показати їх, або повідомити
- * про потребу уточнення.
+ * усі знайдені записи; рішення, що з ними робити, ухвалює resolveSingleLesson.
  */
-function findLessons(data, dayOfWeek, pairNumber, parity) {
-  const day = data.days?.find((d) => d.dayOfWeek === dayOfWeek);
-  if (!day) {
-    const available = (data.days ?? []).map((d) => d.dayOfWeek).join(", ");
-    fail(`день "${dayOfWeek}" не знайдено в розкладі. Доступні дні: ${available}.`);
-  }
+function findLessons(data, dayName, pairNumber, parity) {
+  const day = findDay(data, dayName);
   let matches = day.lessons.filter((l) => l.pairNumber === pairNumber);
   if (matches.length === 0) {
-    fail(`пару №${pairNumber} не знайдено в дні "${dayOfWeek}".`);
+    fail(`пару №${pairNumber} не знайдено в дні "${day.dayOfWeek}".`);
   }
   if (parity) {
     matches = matches.filter((l) => l.weekParity === parity);
     if (matches.length === 0) {
-      fail(`на пару №${pairNumber} у дні "${dayOfWeek}" з тижнем "${parity}" нічого не знайдено.`);
+      fail(`на пару №${pairNumber} у дні "${day.dayOfWeek}" з тижнем "${parity}" нічого не знайдено.`);
     }
   }
-  return matches.map((lesson) => ({ dayOfWeek, lesson }));
+  return matches.map((lesson) => ({ dayOfWeek: day.dayOfWeek, lesson }));
+}
+
+/**
+ * Повертає рівно одне заняття для команд show і field. Якщо під описом
+ * підпадає кілька (чергування чисельник/знаменник) — це помилка виклику:
+ * користувач має уточнити тиждень третім аргументом.
+ */
+function resolveSingleLesson(data, dayName, pair, parity) {
+  const pairNumber = parsePositiveInt(pair, "номер пари");
+  const matches = findLessons(data, dayName, pairNumber, parity);
+  if (matches.length > 1) {
+    const options = matches.map((m) => "  " + lessonSummaryLine(m)).join("\n");
+    fail(
+      `у дні "${matches[0].dayOfWeek}" на пару №${pairNumber} припадає ${matches.length} заняття залежно від тижня. ` +
+        `Уточніть тиждень (чисельник або знаменник) останнім аргументом:\n${options}`
+    );
+  }
+  return matches[0];
 }
 
 /**
@@ -128,16 +181,42 @@ function formatFieldValue(value) {
   return String(value);
 }
 
-/** Перетворює ціле число з перевіркою; при помилці завершує програму. */
-function parsePairNumber(value) {
-  const n = Number(value);
-  if (!Number.isInteger(n) || n <= 0) {
-    fail(`номер пари має бути додатним цілим числом, отримано "${value}".`);
+/** Перетворює рядок на додатне ціле число; label — що саме перевіряємо (для повідомлення). */
+function parsePositiveInt(value, label) {
+  if (!/^\d+$/.test(value) || Number(value) === 0) {
+    fail(`${label} має бути додатним цілим числом, отримано "${value}".`);
   }
-  return n;
+  return Number(value);
 }
 
 // ---------- Опис програми ----------
+
+const DEFAULT_FILE = "data.json";
+
+// Службові заголовки довідки commander за замовчуванням англійські — перекладаємо їх.
+const HELP_TITLES = {
+  "Usage:": "Використання:",
+  "Arguments:": "Аргументи:",
+  "Options:": "Опції:",
+  "Commands:": "Команди:",
+};
+const defaultHelp = new Help();
+const helpLocalization = {
+  styleTitle: (text) => HELP_TITLES[text] ?? text,
+  // "[options]" у рядках використання команд теж замінюємо на українське "[опції]"
+  commandUsage: (cmd) => defaultHelp.commandUsage(cmd).replace("[options]", "[опції]"),
+  subcommandTerm: (cmd) => defaultHelp.subcommandTerm(cmd).replace("[options]", "[опції]"),
+  // замість "(choices: ...)" показуємо "(допустимі значення: ...)"
+  argumentDescription: (argument) =>
+    argument.argChoices
+      ? `${argument.description} (допустимі значення: ${argument.argChoices.join(", ")})`
+      : argument.description,
+};
+
+/** Читає розклад із файлу, заданого глобальною опцією --file (або з файлу за замовчуванням). */
+function loadScheduleFromOptions() {
+  return loadData(program.opts().file ?? DEFAULT_FILE);
+}
 
 const program = new Command();
 
@@ -147,7 +226,11 @@ program
     "CLI-програма для роботи з розкладом занять групи (JSON-документ з ЛР1)."
   )
   .version("1.0.0", "-v, --version", "показати версію програми")
-  .option("-f, --file <path>", "шлях до JSON-файлу розкладу", "data.json")
+  .option("-f, --file <path>", `шлях до JSON-файлу розкладу (за замовчуванням: ${DEFAULT_FILE})`)
+  .usage("[опції] [команда]")
+  .configureHelp(helpLocalization)
+  .helpOption("-h, --help", "показати довідку")
+  .addHelpCommand("help [command]", "показати довідку по команді")
   .addHelpText(
     "after",
     `
@@ -159,16 +242,20 @@ program
   $ node index.js teacher Бойко --remote-only
   $ node index.js parity чисельник`
   )
-  .exitOverride(); // перехоплюємо помилки commander самі, замість process.exit напряму
+  // commander сам друкує свої помилки англійською — вимикаємо це, бо ми виводимо
+  // власне повідомлення українською в блоці catch унизу файлу.
+  .configureOutput({ outputError: () => {} })
+  // exitOverride: замість process.exit commander кидає виняток, який ми перехоплюємо.
+  .exitOverride();
 
 // ---------- Частина 3. Загальні можливості ----------
 
 program
   .command("list")
   .description("показати стислий перелік занять")
-  .option("-l, --limit <n>", "обмежити кількість виведених занять", (v) => parsePairNumber(v))
+  .option("-l, --limit <n>", "обмежити кількість виведених занять", (v) => parsePositiveInt(v, "значення опції --limit"))
   .action((opts) => {
-    const data = loadData(program.opts().file);
+    const data = loadScheduleFromOptions();
     let items = flattenLessons(data);
     if (opts.limit) items = items.slice(0, opts.limit);
     if (items.length === 0) {
@@ -191,18 +278,8 @@ program
     ])
   )
   .action((day, pair, parity) => {
-    const data = loadData(program.opts().file);
-    const pairNumber = parsePairNumber(pair);
-    const matches = findLessons(data, day, pairNumber, parity);
-    if (matches.length > 1) {
-      console.log(
-        `На ${day}, пару №${pairNumber} припадає ${matches.length} заняття залежно від тижня. Уточніть тиждень:`
-      );
-      matches.forEach((m) => console.log("  " + lessonSummaryLine(m)));
-      process.exitCode = 1;
-      return;
-    }
-    console.log(lessonFullText(matches[0]));
+    const data = loadScheduleFromOptions();
+    console.log(lessonFullText(resolveSingleLesson(data, day, pair, parity)));
   });
 
 program
@@ -218,17 +295,9 @@ program
     ])
   )
   .action((day, pair, path, parity) => {
-    const data = loadData(program.opts().file);
-    const pairNumber = parsePairNumber(pair);
-    const matches = findLessons(data, day, pairNumber, parity);
-    if (matches.length > 1) {
-      console.log(
-        `На ${day}, пару №${pairNumber} припадає ${matches.length} заняття залежно від тижня. Уточніть тиждень (чисельник/знаменник).`
-      );
-      process.exitCode = 1;
-      return;
-    }
-    const result = getByPath(matches[0].lesson, path);
+    const data = loadScheduleFromOptions();
+    const { lesson } = resolveSingleLesson(data, day, pair, parity);
+    const result = getByPath(lesson, path);
     if (!result.found) {
       if (result.reason === "null-parent") {
         fail(
@@ -245,17 +314,13 @@ program
 program
   .command("day")
   .description("показати всі заняття обраного дня тижня")
-  .addArgument(new Argument("<dayOfWeek>", "день тижня, напр. Вівторок"))
-  .action((dayOfWeek) => {
-    const data = loadData(program.opts().file);
-    const day = data.days?.find((d) => d.dayOfWeek === dayOfWeek);
-    if (!day) {
-      const available = (data.days ?? []).map((d) => d.dayOfWeek).join(", ");
-      fail(`день "${dayOfWeek}" не знайдено. Доступні дні: ${available}.`);
-    }
-    console.log(`${dayOfWeek} (${day.lessons.length} заняття):`);
+  .addArgument(new Argument("<dayOfWeek>", "день тижня, напр. Вівторок (регістр не важливий)"))
+  .action((dayName) => {
+    const data = loadScheduleFromOptions();
+    const day = findDay(data, dayName);
+    console.log(`Розклад дня: ${day.dayOfWeek} (всього занять: ${day.lessons.length}):`);
     day.lessons.forEach((lesson) =>
-      console.log("  " + lessonSummaryLine({ dayOfWeek, lesson }))
+      console.log("  " + lessonSummaryLine({ dayOfWeek: day.dayOfWeek, lesson }))
     );
   });
 
@@ -263,13 +328,14 @@ program
   .command("teacher")
   .description("показати заняття обраного викладача (частковий пошук за іменем)")
   .addArgument(new Argument("<name>", "повне ім'я або фрагмент, напр. Бойко"))
-  .option("--remote-only", "показати лише дистанційні заняття", false)
+  .option("--remote-only", "показати лише дистанційні заняття")
   .action((name, opts) => {
-    const data = loadData(program.opts().file);
-    const needle = name.toLowerCase();
+    const data = loadScheduleFromOptions();
+    const needle = normalize(name);
     let items = flattenLessons(data).filter(
       (item) =>
-        item.lesson.teacher && item.lesson.teacher.fullName.toLowerCase().includes(needle)
+        typeof item.lesson.teacher?.fullName === "string" &&
+        normalize(item.lesson.teacher.fullName).includes(needle)
     );
     if (opts.remoteOnly) {
       items = items.filter((item) => item.lesson.isRemote);
@@ -278,7 +344,7 @@ program
       console.log(`Заняття викладача "${name}" не знайдено${opts.remoteOnly ? " (серед дистанційних)" : ""}.`);
       return;
     }
-    console.log(`Заняття викладача "${name}" (${items.length}):`);
+    console.log(`Заняття викладача "${name}" (всього: ${items.length}):`);
     items.forEach((item) => console.log("  " + lessonSummaryLine(item)));
   });
 
@@ -287,29 +353,60 @@ program
   .description("показати розклад за чисельником або знаменником (разом із щотижневими заняттями)")
   .addArgument(new Argument("<value>", "тиждень").choices(["чисельник", "знаменник"]))
   .action((value) => {
-    const data = loadData(program.opts().file);
+    const data = loadScheduleFromOptions();
     // щотижневі заняття (weekParity === null) входять в обидва варіанти тижня
     const items = flattenLessons(data).filter(
       (item) => item.lesson.weekParity === value || item.lesson.weekParity === null
     );
-    console.log(`Розклад на тиждень "${value}" (${items.length} занять, разом із щотижневими):`);
+    console.log(`Розклад на тиждень "${value}" (всього: ${items.length}, разом із щотижневими):`);
     items.forEach((item) => console.log("  " + lessonSummaryLine(item)));
   });
 
 // ---------- Запуск програми з перехопленням помилок commander ----------
 
-// Переклад типових кодів помилок commander на українську — самі коди
-// стабільні (частина публічного API commander), а текст повідомлення ні,
-// тому ми формуємо власну коротку фразу, а деталі (яка саме опція/аргумент)
-// додаємо з оригінального err.message.
-const COMMANDER_ERROR_MESSAGES = {
-  "commander.missingArgument": "пропущено обов'язковий аргумент.",
-  "commander.unknownOption": "невідома опція.",
-  "commander.unknownCommand": "невідома команда.",
-  "commander.invalidArgument": "неприпустиме значення аргументу.",
-  "commander.excessArguments": "забагато аргументів.",
-  "commander.missingMandatoryOptionValue": "не вказано значення обов'язкової опції.",
-};
+/**
+ * Формує повідомлення українською за кодом помилки commander. Самі коди стабільні
+ * (частина публічного API), а англійський текст повідомлення лише розбираємо,
+ * щоб дістати з нього назву опції/аргументу; якщо розібрати не вдалося — загальна фраза.
+ */
+function describeCommanderError(err) {
+  const msg = err.message.replace(/^error: /, "");
+  const grab = (re) => msg.match(re) ?? [];
+
+  switch (err.code) {
+    case "commander.missingArgument": {
+      const [, name] = grab(/argument '([^']+)'/);
+      return name ? `пропущено обов'язковий аргумент <${name}>.` : "пропущено обов'язковий аргумент.";
+    }
+    case "commander.optionMissingArgument": {
+      const [, opt] = grab(/option '([^']+)'/);
+      return opt ? `для опції "${opt}" не вказано значення.` : "для опції не вказано значення.";
+    }
+    case "commander.unknownOption": {
+      const [, opt] = grab(/unknown option '([^']+)'/);
+      return opt ? `невідома опція "${opt}".` : "невідома опція.";
+    }
+    case "commander.unknownCommand": {
+      const [, name] = grab(/unknown command '([^']+)'/);
+      return name ? `невідома команда "${name}".` : "невідома команда.";
+    }
+    case "commander.excessArguments": {
+      const [, cmd, expected, got] = grab(/too many arguments for '([^']+)'\. Expected (\d+) arguments? but got (\d+)/);
+      return cmd
+        ? `забагато аргументів для "${cmd}": очікувалось ${expected}, отримано ${got}.`
+        : "забагато аргументів.";
+    }
+    case "commander.invalidArgument": {
+      const [, value, name, choices] = grab(/value '([^']*)' is invalid for argument '([^']+)'(?:\. Allowed choices are (.+?)\.?)?$/);
+      if (!name) return "неприпустиме значення аргументу.";
+      return choices
+        ? `значення "${value}" неприпустиме для аргументу <${name}>. Допустимі значення: ${choices}.`
+        : `значення "${value}" неприпустиме для аргументу <${name}>.`;
+    }
+    default:
+      return "некоректний виклик програми.";
+  }
+}
 
 try {
   program.parse(process.argv);
@@ -320,7 +417,16 @@ try {
   if (err.code === "commander.helpDisplayed" || err.code === "commander.version") {
     process.exit(0);
   }
-  const prefix = COMMANDER_ERROR_MESSAGES[err.code] ?? "некоректний виклик програми.";
-  console.error(`Помилка: ${prefix} (${err.message})`);
-  process.exit(err.exitCode && err.exitCode !== 0 ? err.exitCode : 1);
+  // Програму запущено без команди: commander уже показав довідку, додаткове повідомлення зайве.
+  if (err.code === "commander.help") {
+    process.exit(err.exitCode ?? 1);
+  }
+  if (typeof err.code === "string" && err.code.startsWith("commander.")) {
+    console.error(`Помилка: ${describeCommanderError(err)}`);
+    console.error("Довідка: node index.js --help");
+    process.exit(err.exitCode && err.exitCode !== 0 ? err.exitCode : 1);
+  }
+  // Усе інше — непередбачена помилка виконання; стек не показуємо.
+  console.error(`Помилка: сталася непередбачена помилка під час виконання (${err.message}).`);
+  process.exit(1);
 }
