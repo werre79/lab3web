@@ -4,6 +4,13 @@ import { readFileSync } from "node:fs";
 
 // ---------- Допоміжні функції ----------
 
+// Причини, з яких файл не вдається прочитати, за кодом помилки Node.js (українською).
+const READ_ERROR_REASONS = {
+  EISDIR: "це каталог, а не файл",
+  EACCES: "немає прав доступу",
+  EPERM: "операцію заборонено",
+};
+
 /** Друкує повідомлення про помилку українською та завершує програму з кодом 1. */
 function fail(message) {
   console.error(`Помилка: ${message}`);
@@ -21,14 +28,19 @@ function loadData(filePath) {
     raw = readFileSync(filePath, "utf-8");
   } catch (err) {
     if (err.code === "ENOENT") fail(`файл "${filePath}" не знайдено.`);
-    fail(`не вдалося прочитати файл "${filePath}" (${err.message}).`);
+    const reason = READ_ERROR_REASONS[err.code] ?? `код помилки ${err.code ?? "невідомий"}`;
+    fail(`не вдалося прочитати файл "${filePath}" (${reason}).`);
   }
 
   let data;
   try {
     data = JSON.parse(raw);
   } catch (err) {
-    fail(`файл "${filePath}" містить некоректний JSON (${err.message}).`);
+    // Текст помилки JSON.parse англійський і залежить від версії Node, тому з нього
+    // беремо лише позицію (є в усіх версіях), а пояснення формуємо самі.
+    const position = err.message.match(/position (\d+)/)?.[1];
+    const where = position ? ` (синтаксична помилка біля символу ${position})` : "";
+    fail(`файл "${filePath}" містить некоректний JSON${where}.`);
   }
 
   // JSON може бути синтаксично правильним, але не бути розкладом (null, [], число...)
